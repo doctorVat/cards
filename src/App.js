@@ -1,25 +1,79 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, {useEffect, useState } from 'react';
 import './App.css';
+import CurrencyRow from './CurrencyRow';
+
+const BASE_URL = 'https://api.exchangeratesapi.io/latest'
 
 function App() {
+  
+  const [currencyOptions, setcurrencyOptions] = useState([])
+  const [fromCurrency, setFromCurrency] = useState()
+  const [toCurrency, setToCurrency] = useState()
+  const [exchangeRate, setExchangeRate] = useState() //отвечает за курс (1.3 например)
+  const [amount, setAmount] = useState(1)
+  const [amountInFromCurrency, setAmountInFromCurrency] = useState(true) //позволяет понять какой из CurrencyRow мы изменили (1 или 2)
+  // console.log(exchangeRate);
+  
+  let toAmount, fromAmount
+  if (amountInFromCurrency) {
+    fromAmount = amount
+    toAmount = amount * exchangeRate
+  } else {
+    toAmount = amount
+    fromAmount = amount / exchangeRate
+  } //чтобы разобраться из какой в какую валюту конвертировать
+
+  useEffect(() => {
+    fetch(BASE_URL)
+    .then(res => res.json())
+    .then(data => {
+
+      const firstCurrency = Object.keys(data.rates)[0] //устанавливаем первую валюту, которая идет после дефолтной (EUR)
+      setcurrencyOptions([data.base, ...Object.keys(data.rates)])
+      setFromCurrency(data.base)
+      setToCurrency(firstCurrency)
+      setExchangeRate(data.rates[firstCurrency])
+      // console.log(data);
+    })
+     }, [])
+
+  useEffect(() => {
+      if (fromCurrency !=null && toCurrency!=null) {
+        fetch(`${BASE_URL}?base=${fromCurrency}&symbols=${toCurrency}`)
+        .then(res => res.json())
+        .then(data => setExchangeRate(data.rates[toCurrency]))
+      }
+    }, [fromCurrency, toCurrency]) //если поменяется fromCurrency, toCurrency - мы делаем useEffect
+
+function handleFromAmmountChange (e) {
+  setAmount(e.target.value)
+  setAmountInFromCurrency(true)
+} //чтобы мы могли измененять value в input
+
+function handleToAmmountChange (e) {
+  setAmount(e.target.value)
+  setAmountInFromCurrency(false)
+} //чтобы мы могли измененять value в input
+
+
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+    <h1>Convert Money</h1>
+    <CurrencyRow
+       currencyOptions={currencyOptions} 
+       selectedCurrency={fromCurrency}
+       onChangeCurrency={e => setFromCurrency(e.target.value)}
+       amount={fromAmount}
+       onChangeAmmount={handleFromAmmountChange}/>
+    <div className='equals'> = </div>
+    <CurrencyRow
+       currencyOptions={currencyOptions}
+       selectedCurrency={toCurrency}
+       onChangeCurrency={e => setToCurrency(e.target.value)}
+       amount={toAmount}
+       onChangeAmmount={handleToAmmountChange}/>
+    </>
   );
 }
 
